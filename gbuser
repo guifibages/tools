@@ -1,0 +1,169 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+# Script per gestió de contrasenyes LDAP
+# 
+# Copyright (c) 2012, Ignacio Torres Masdeu <ignacio@torresmasdeu.name>
+#
+# Permission to use, copy, modify, and/or distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+# REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+# AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+# INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+# LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+# OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+# PERFORMANCE OF THIS SOFTWARE.
+# 
+
+import ldap
+import ldap.modlist as modlist
+import getpass
+import sys
+import os
+
+def connect():
+	try:
+		global password
+		global user_dn
+		global uid
+		uid = getpass.getuser()
+		user_dn = "uid=%s,ou=Users,ou=auth,dc=guifibages,dc=net"%uid
+		password = getpass.getpass("Contrasenya: ")
+		l = ldap.initialize("ldaps://aaa.guifibages.net:636")
+		l.simple_bind_s(user_dn,password)
+		return l
+	except ldap.LDAPError, error_message:
+		print "Couldn't Connect. %s " % error_message
+		exit(1)
+
+def password_name(password_type):
+	password_names = {
+		"userPassword": "contrasenya d'usuari",
+		"guifibagesPlaintextPassword": "contrasenya de xarxa",
+		"guifibagesApplicationPassword": "contrasenya d'aplicacions"
+	}
+	return password_names[password_type]
+
+def compare_password(new_password, current_passwords):
+	error_message = "Error: La nova contrasenya és igual a l'actual %s.\nContrasenya no canviada"
+	if (new_password in password or password in new_password):
+		print error_message % password_name("userPassword")
+		sys.exit(1)
+
+	for password_type in current_passwords:
+		if password_type == 'userPassword':
+			continue
+		for cpassword in current_passwords[password_type]:
+			if (new_password in cpassword or cpassword in new_password):
+				print error_message % password_name(password_type)
+				sys.exit(1)
+
+def modify_ldap_property(old, new):
+	try:
+		ldif = modlist.modifyModlist(old, new)
+		l.modify_s(user_dn, ldif)
+		return True
+	except:
+		return False
+
+def set_password(password_type):
+	new_password = getpass.getpass("Nova %s: " % password_name(password_type))
+	if (len(new_password)<8):
+		print "Error: La nova contrasenya ha de tenir un mínim de 8 caracters"
+		sys.exit(1)
+	if password_type == "userPassword":
+		try:
+			l.passwd(user_dn, password, new_password)
+			print "%s canviada correctament" % (password_name(password_type).capitalize())
+		except:
+			print "Error intentant modificar %s " % (password_name(password_type))
+			print "Unexpected error:", sys.exc_info()[0]
+			raise
+		sys.exit(0)
+
+
+	new = { password_type: new_password }
+	current_passwords = get_password()
+
+	compare_password(new_password, current_passwords)
+
+	if (password_type in current_passwords):
+		old = { password_type: current_passwords[password_type][0] }
+	else:
+		old = {}
+
+	
+	if (modify_ldap_property(old,new)):
+		print "%s canviada correctament" % (password_name(password_type).capitalize())
+	else:
+		print "Error intentant modificar %s " % (password_name(password_type))
+
+def set_plaintext_password():
+	pass
+
+def set_network_password():
+	pass
+
+def set_application_password():
+	pass
+
+def print_passwords():
+	current_passwords = get_password()
+	for password_type in current_passwords:
+		if password_type == 'userPassword':
+			continue
+		for cpassword in current_passwords[password_type]:
+			print "%s: %s" % (password_name(password_type).capitalize(), cpassword)
+
+def get_password(password_type=None):
+	try:
+		res = l.search_s(user_dn, ldap.SCOPE_BASE, 'objectClass=*', ['guifibagesPlaintextPassword', 'userPassword', 'guifibagesApplicationPassword'])
+		passwords = res[0][1]
+		if (password_type == None):
+			return res[0][1]
+		else:
+			return res[0][1][password_type]
+
+	except AttributeError, error_message:
+		print "No such user"
+
+def print_help():
+	print """Veure o modificar contrasenyes Guifibages
+Ús: %s [-h | -u | -x | -a]
+
+Sense opcions: mostrar contrasenyes de xarxa i aplicacions
+
+Opcions:
+  -h    Mostrar aquesta ajuda
+  -u    Modificar contrasenya d'usuari
+  -x    Modificar contrasenya de xarxa
+  -a    Modificar contrasenya d'aplicacions""" % (sys.argv[0])
+	sys.exit(0)
+
+def parse_args():
+	global l
+	try:
+		if (sys.argv[1] == '-h'):
+			print_help()
+			sys.exit(0)
+		switch = {
+			'-u': "userPassword",
+			'-x': "guifibagesPlaintextPassword",
+			'-a': "guifibagesApplicationPassword"
+		}
+		password_type = switch.get(sys.argv[1])
+		if password_type == None:
+			print_help()
+			sys.exit(1)
+		l = connect()
+		set_password(password_type)
+
+	except IndexError:
+		l = connect()
+		print_passwords()
+
+if __name__=='__main__':
+	parse_args()

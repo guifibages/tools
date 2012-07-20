@@ -1,0 +1,75 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+# Lector d'arxius winbox
+# 
+# Copyright (c) 2012, Ignacio Torres Masdeu <ignacio@torresmasdeu.name>
+#
+# Permission to use, copy, modify, and/or distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+# REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+# AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+# INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+# LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+# OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+# PERFORMANCE OF THIS SOFTWARE.
+# 
+
+import sys
+import re
+from os.path import basename
+progname = basename(sys.argv[0])
+
+def print_help():
+	print """Forma d’ús: %s <FITXER>
+Lector d'arxius winbox.cfg i wbx
+""" % progname
+
+
+def clean(item):
+	bound = '\7f'
+	keep  = ''
+	for i in range(0,31):
+		bound += chr(i)
+	for i in range(32,127):
+		keep += chr(i)
+	for i in range(128,255):
+		keep += chr(i)
+	retval={}
+
+	# La miga del tema és aqui
+	# Bàsicament el que fem es cercar cadenes de text (ascii 32-127 i ascii
+	# extés 128-255) que estiguin envoltades per caràcters de control
+
+	values = re.findall('[%s][%s]+[%s]' % (bound, keep, bound), item)
+	for v in values:
+		for key in 'host login note pwd'.split():
+			if v[1:len(key)+1] == key:
+			# Com que la regexp inclou un caràcter de control a
+			# cada banda hem de tenir-ho en compte per extraure
+			# l'informació
+				retval[key] = v[len(key)+1:-1]
+	return retval
+
+
+if __name__=='__main__':
+	try:
+		f = open(sys.argv[1])
+	except IndexError:
+		print "%s: cal especificar un fitxer" % progname
+		sys.exit(1)
+	except:
+		print_help()
+		sys.exit(1)
+
+	a = f.read()
+	items = re.split('\x09\x00\x04', a)
+	keep = items[0]
+	for (i, val) in enumerate(items):
+		items[i] = clean(val)
+		for key in items[i]:
+			print "%s: %s" % (key, items[i][key])
+		print
