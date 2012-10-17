@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+ldapsearch -x -b 'ou=ST,ou=Hosts,ou=net,dc=guifibages,dc=net' ipHostNumber cn | awk '
+BEGIN {FS=": ";name=0;ip=0}
+/^cn/ {name=$2}
+/^ipHostNumber/ {ip=$2}
+/^dn:/ {if (name) print name " " ip ; name=0; ip=0}
+END {if (name) print name " " ip }'
