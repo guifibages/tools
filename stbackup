@@ -1,79 +1,32 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-#
-# Script per gesti√≥ de ST a Guifibages
-# 
-# Copyright (c) 2012, Ignacio Torres Masdeu <ignacio@torresmasdeu.name>
-#
-# Permission to use, copy, modify, and/or distribute this software for any
-# purpose with or without fee is hereby granted, provided that the above
-# copyright notice and this permission notice appear in all copies.
-#
-# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
-# REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
-# AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
-# INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
-# LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
-# OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-# PERFORMANCE OF THIS SOFTWARE.
+#!/usr/bin/env bash
+timestamp=$(date +%Y%m%d%H%M)
 
-import ldap
-import subprocess
-import sys
-import os, errno
-from datetime import datetime
+# Esto es magia arcana con arrays de bash
+hosts=($(/guifibages/sbin/list-st))
+limit=$(( ${#hosts[*]}-2 ))
 
-def get_sts():
-	try:
-		l = ldap.initialize("ldaps://aaa.guifibages.net:636")
-		r = l.search_s("ou=ST,ou=Hosts,ou=net,dc=guifibages,dc=net", ldap.SCOPE_SUBTREE, '(&(objectClass=ipHost)(ipHostNumber=*))', ['cn', 'ipHostNumber'])
-		res = []
-		for dn,val in r:
-			res.append({
-				'name': val['cn'][0],
-				'ip': val['ipHostNumber'][0]
-				})
+function cagonla {
+  echo $* >&2
+  exit -1
+}
 
-		return res
-	except ldap.LDAPError, error_message:
-		sys.stderr.write("Couldn't Connect. %s\n" % ([error_message]))
-		raise
+for i in `seq 0 2 $limit`
+do
+  hostname=${hosts[$i]}
+  ip=${hosts[$(($i+1))]}
+  backupdir=/guifibages/backup/st/$hostname
+  backupfile=$backupdir/$hostname-$timestamp.export
+  [ -d backupdir ] || mkdir -p $backupdir || cagonla No es pot crear el directori $backupdir
 
+  echo "$timestamp Fent backup de $hostname $ip"
+  lastfile=$backupdir/$(ls -t $backupdir| head -1)
+  ssh -o StrictHostKeyChecking=no guest@$ip /export compact > $backupfile || echo "Error al fer export de $hostname ($ip)" >&2
 
-def mkdir_p(path):
-	try:
-		os.makedirs(path)
-	except OSError as exc: # Python >2.5
-		if exc.errno != errno.EEXIST:
-			raise
+  # Si son iguals, crear un enlla√ fort. Ignorar 27 primers bytes (data de backup)
 
-def backup(host):
-	hostname, hostip = (host['name'], host['ip'])
-	timestamp = datetime.utcnow().strftime("%Y%m%d%H%M")
-	logdir = "/guifibages/backup/st/%s" % hostname
-	logpath = "%s/%s-%s.export" % (logdir, hostname, timestamp)
-	errorpath = "%s/%s-%s.error" % (logdir, hostname, timestamp)
-	mkdir_p(logdir)
-	if (not os.path.isdir(logdir)):
-		sys.stderr.write("%s no es un directori. No fem backup de %s." % (logdir, hostname))
-		return
-
-	cmd = ["/usr/bin/ssh","-o StrictHostKeyChecking=no", "guest@%s" % host['ip'],"/export compact"]
-
-	with open(logpath, 'w') as fexport:
-		with open(errorpath, 'w') as ferror:
-			p = subprocess.Popen(cmd, shell=False, stdout=fexport, stderr=ferror)
-			ret_code = p.wait()
-	if (os.path.getsize(errorpath) > 0):
-		sys.stderr.write("Hubo errores en %s\n" % hostname)
-		with open(errorpath) as error:
-			sys.stderr.write(error.read())
-	else:
-		print "No hubo errores " + hostname
-		os.remove(errorpath)
-	return ret_code
-
-if __name__=='__main__':
-	sts = get_sts()
-	for host in sts:
-		backup(host)
+  if cmp -s -i 27 $lastfile $backupfile
+  then
+    echo "** Sense modificacions"
+    ln -f $lastfile $backupfile
+  fi
+done
