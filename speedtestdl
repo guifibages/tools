@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+
+. /etc/profile # Aixíens assegurem que tenim un PATH adequat
+
+# Comandes requerides
+for i in unzip wget ; do
+  which $i >/dev/null
+  [ $? -ne 0 ] && echo "Falta la comanda: ${i}" > /dev/stderr && exit 1
+done
+
+WORKDIR=/tmp/speedtestdl
+MINIURL=http://c.speedtest.net/mini/mini.zip
+TARGETDIR=/guifibages/var/www/speedtest
+
+NEWFILES="speedtest.swf speedtest"
+mkdir $WORKDIR
+cd $WORKDIR
+
+echo "Descarregant ${MINIURL} a ${WORKDIR}"
+wget $MINIURL
+lastresult=$?
+
+if [ $lastresult -ne 0 ]; then
+  echo "Problemes al descarregar ${MINIURL}" > /dev/stderr
+  exit $lastresult
+fi
+
+unzip mini.zip
+for i in $NEWFILES; do
+  mv -f ${i} ${TARGETDIR}/${i}
+  lastresult=$?
+
+  if [ $lastresult -ne 0 ]; then
+    echo "Problemes al moure ${i} a ${TARGETDIR}/${i}" > /dev/stderr
+    exit $lastresult
+  fi
+done
+
+cd /tmp
+
+rm -fr $WORKDIR
