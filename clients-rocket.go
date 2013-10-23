@@ -25,7 +25,27 @@ type AP struct {
 	Clients []STALink
 	wc http.Client
 	address string
+	Status Status
 }
+
+type Status struct {
+	Host struct {
+		Uptime	int	`json:"uptime"`
+		Time	string	`json:"time"`
+		FWVersion	string	`json:"fwversion"`
+		Hostname	string	`json:"hostname"`
+		Netrole	string	`json:"netrole"`
+	} `json:"host"`
+	Wireless struct {
+		Mode	string	`json:"mode"`
+		ESSID	string	`json:"essid"`
+		APMAC	string	`json:"apmac"`
+		CountryCode	int	`json:"countrycode"`
+		Channel	int	`json:"channel"`
+		Frequency	string	`json:"frequency"`
+	} `json:"wireless"`
+}
+
 type STALink struct {
 	Mac        string `json:"mac"`
 	Name       string `json:"name"`
@@ -108,6 +128,21 @@ func NewAP (address string) AP {
 	return *ap
 
 }
+func (ap *AP) GetStatus() {
+	staurl := fmt.Sprintf("https://%s/status.cgi", ap.address)
+	res,err := ap.wc.Get(staurl)
+	if err != nil {
+		log.Fatal("Error loading status", err)
+	}
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		log.Fatal("Error reading body", err)
+	}
+	err = json.Unmarshal(body, &ap.Status)
+	if err != nil {
+		log.Fatal("Error unmarshalling status", err)
+	}
+}
 func (ap *AP) GetSTA() {
 	staurl := fmt.Sprintf("https://%s/sta.cgi", ap.address)
 	res,err := ap.wc.Get(staurl)
@@ -122,9 +157,15 @@ func (ap *AP) GetSTA() {
 	if err != nil {
 		log.Fatal("Error unmarshalling ", err)
 	}
+	AirmaxPriorities := [4]string{"High","Medium","Low","None"}
+	fmt.Printf("%8s %15s %15s %14s %3s %6s %8s\n", "Priority", "Name", "IP", "Airmax Quality", "CCQ", "Signal", "Distance")
 	for i := range ap.Clients {
 		c := ap.Clients[i]
-		fmt.Printf("%d Client: %15s   Airmax Quality: %.0f CCQ: %.0f Signal: %.2f Distance: %.1fKm\n", c.Airmax.Priority, c.Name, c.Airmax.Quality, c.CCQ, c.Signal, c.Distance/1000)
+		priority := AirmaxPriorities[c.Airmax.Priority]
+		if c.Airmax.Quality == 0 && c.Airmax.Priority == 0 {
+			priority = "None"
+		}
+		fmt.Printf("%8s %15s %15s %14.0f %3.0f %6.2f %8.1fKm\n", priority, c.Name, c.LastIP, c.Airmax.Quality, c.CCQ, c.Signal, c.Distance/1000)
 	}
 }
 
@@ -135,6 +176,8 @@ func main() {
 		os.Exit(1)
 	}
 	ap := NewAP(os.Args[1])
+	ap.GetStatus()
+	fmt.Printf("### %s (%s AirOS %s)\n", ap.Status.Host.Hostname, ap.address, ap.Status.Host.FWVersion)
 	ap.GetSTA()
 
 	//fmt.Println(string(a))
