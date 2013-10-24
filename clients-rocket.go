@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"path"
 	"mime/multipart"
 	"io/ioutil"
@@ -21,8 +22,17 @@ func noRedirect(req *http.Request, via []*http.Request) error {
 	return errors.New("No redirect allowed")
 }
 
+type Clients []*STALink
+func (c Clients) Len() int { return len(c) }
+func (c Clients) Swap(i,j int) { c[i], c[j] = c[j], c[i] }
+
+type ByPriority struct{ Clients }
+func (c Clients) Less (i,j int) bool {
+	return c[i].Airmax.Priority < c[j].Airmax.Priority
+}
+
 type AP struct {
-	Clients []STALink
+	Clients Clients
 	wc http.Client
 	address string
 	Status Status
@@ -158,14 +168,16 @@ func (ap *AP) GetSTA() {
 		log.Fatal("Error unmarshalling ", err)
 	}
 	AirmaxPriorities := [4]string{"High","Medium","Low","None"}
-	fmt.Printf("%8s %15s %15s %14s %3s %6s %8s\n", "Priority", "Name", "IP", "Airmax Quality", "CCQ", "Signal", "Distance")
+	fmt.Printf("%46s","Airmax\n")
+	fmt.Printf("%14s %15s  %8s %7s  %3s %6s %8s\n", "Name", "IP", "Priority", "Quality", "CCQ", "Signal", "Distance")
+	sort.Sort(ap.Clients)
 	for i := range ap.Clients {
 		c := ap.Clients[i]
 		priority := AirmaxPriorities[c.Airmax.Priority]
 		if c.Airmax.Quality == 0 && c.Airmax.Priority == 0 {
-			priority = "None"
+			priority = "N/A"
 		}
-		fmt.Printf("%8s %15s %15s %14.0f %3.0f %6.2f %8.1fKm\n", priority, c.Name, c.LastIP, c.Airmax.Quality, c.CCQ, c.Signal, c.Distance/1000)
+		fmt.Printf("%14s %15s  %8s %7.0f  %3.0f %6.2f %6.1fKm\n", c.Name, c.LastIP, priority, c.Airmax.Quality, c.CCQ, c.Signal, c.Distance/1000)
 	}
 }
 
