@@ -33,11 +33,11 @@ except OSError:
 
 def is_st(tag):
     if tag.name == "device" and len(tag.find_all("radio")) > 1:
-        print "%6s %30s http://guifi.net/ca/guifi/device/%s" % (tag["id"], tag["title"], tag["id"])
         return True
     else:
         return False
 with open(cnml_file, 'r') as f:
     cnml = BeautifulSoup(f.read())
-cnml.find_all(is_st)
+for st in cnml.find_all(is_st):
+    print "%6s %30s http://guifi.net/ca/guifi/device/%s" % (st["id"], st["title"], st["id"])
 #print cnml.find_all("device", {"mode" : "ap"})
