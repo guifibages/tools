@@ -1,4 +1,4 @@
-#!/usr/bin/env py
+#!/usr/bin/env python
 # vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
 # Requires the following modules
 #   apt-get install python-requests python-bs4
