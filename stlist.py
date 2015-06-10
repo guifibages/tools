@@ -9,33 +9,23 @@ import requests
 import os
 import time
 from bs4 import BeautifulSoup
+from optparse import OptionParser
 
-zone=2426
-cnml_file="/tmp/%s.cnml" % zone
-cnml_url="http://guifi.net/ca/guifi/cnml/%s/detail" % zone
 
 # http://stackoverflow.com/a/14981125
 def warning(*objs):
     print("WARNING: ", *objs, file=sys.stderr)
 
+
 # http://stackoverflow.com/a/16695277
 def DownloadFile(url, local_filename):
-    warning( "Downloading %s to %s" % ( url, local_filename) )
+    warning("Downloading %s to %s" % (url, local_filename))
     r = requests.get(url)
     with open(local_filename, 'wb') as f:
-        for chunk in r.iter_content(chunk_size=1024): 
-            if chunk: # filter out keep-alive new chunks
+        for chunk in r.iter_content(chunk_size=1024):
+            if chunk:  # filter out keep-alive new chunks
                 f.write(chunk)
-    return 
-try:
-    age=time.time() - os.path.getmtime(cnml_file)
-    if age > 3600*4:
-        warning( "File age %s" % age )
-        warning( "Too old, redownload")
-        DownloadFile(cnml_url, cnml_file)
-except OSError:
-    warning( "%s does not exist" % cnml_file)
-    DownloadFile(cnml_url, cnml_file)
+    return
 
 
 def is_st(tag):
@@ -43,7 +33,33 @@ def is_st(tag):
         return True
     else:
         return False
-with open(cnml_file, 'r') as f:
-    cnml = BeautifulSoup(f.read())
-for st in cnml.find_all(is_st):
-    print("%6s %30s http://guifi.net/ca/guifi/device/%s" % (st["id"], st["title"], st["id"]))
+
+
+def main():
+    usage = "usage: %prog zone"
+    parser = OptionParser(usage)
+    (options, args) = parser.parse_args()
+    if len(args) != 1:
+        parser.error("incorrect number of arguments")
+    zone = args[0]
+    cnml_file = "/tmp/%s.cnml" % zone
+    cnml_url = "http://guifi.net/ca/guifi/cnml/%s/detail" % zone
+
+    try:
+        age = time.time() - os.path.getmtime(cnml_file)
+        if age > 3600*4:
+            warning("File age %s" % age)
+            warning("Too old, redownload")
+            DownloadFile(cnml_url, cnml_file)
+    except OSError:
+        warning("%s does not exist" % cnml_file)
+        DownloadFile(cnml_url, cnml_file)
+
+    with open(cnml_file, 'r') as f:
+        cnml = BeautifulSoup(f.read())
+        for st in cnml.find_all(is_st):
+            print("%6s %30s http://guifi.net/ca/guifi/device/%s"
+                  % (st["id"], st["title"], st["id"]))
+
+if __name__ == "__main__":
+    main()
