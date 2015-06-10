@@ -22,13 +22,9 @@ if __name__ == "__main__":
         # network = requests.get('http://guifi.net/ca/guifi/menu/ip/ipsearch/%s' % ip.network)
         s = BeautifulSoup(host.text)
         h = s.find("th", text="nipv4").find_parent("table").find_all("td")
-        if len(h) == 0:
-            e = ("%s Host not found. Looking for gateway %s"
-                 % (address, ip.network+1))
-            host = requests.get('http://guifi.net/ca/guifi/menu/ip/ipsearch/%s'
-                                % (ip.network+1))
-            s = BeautifulSoup(host.text)
-            h = s.find("th", text="nipv4").find_parent("table").find_all("td")
+        if len(h) == 0 and address != ip.network+1:
+            next(ip.network+1)
+            return
         node = "%s (http://guifi.net%s)" % (h[5].a.text, h[5].a["href"])
         results.append({
             'ip': ip.ip,
@@ -44,8 +40,5 @@ if __name__ == "__main__":
     pool.close()
     pool.join()
     for r in results:
-        print """%s:
-    network: %s
-    host information: %s
-    Node: %s
-""" % (r['ip'], r['network'], r['errors'] == None, r['node'])
+        print ("%s: Network: %s Node: %s\n" %
+               (r['ip'], r['network'], r['node']))
