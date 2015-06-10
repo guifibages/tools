@@ -3,6 +3,7 @@
 import requests
 import sys
 from multiprocessing.dummy import Pool as ThreadPool
+requests.packages.urllib3.disable_warnings()
 
 
 class Antenna:
