@@ -37,7 +37,7 @@ class Antenna:
                  % ("Name", "IP", "Priority", "Quality", "CCQ", "Signal",
                     "Distance"))
         airmax_priorities = ["High", "Medium", "Low", "None"]
-        for l in self.links:
+        for l in sorted(self.links, key=lambda l: l['airmax']['priority']):
             priority = airmax_priorities[l['airmax']['priority']]
             if l['airmax']['priority'] == 0 and l['airmax']['quality'] == 0:
                 priority = "N/A"
