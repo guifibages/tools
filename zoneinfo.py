@@ -5,11 +5,12 @@
 #   pip install requests beautifulsoup4 netaddr
 from __future__ import print_function
 import sys
-import requests
+import argparse
 import os
 import time
-from bs4 import BeautifulSoup
-from optparse import OptionParser
+
+import requests
+import libcnml
 
 
 # http://stackoverflow.com/a/14981125
@@ -28,46 +29,48 @@ def DownloadFile(url, local_filename):
     return
 
 
-def is_st(tag):
-    if tag.name == "device" and len(tag.find_all("radio")) > 1:
-        return True
-    else:
-        return False
-
-
-def main():
-    usage = "usage: %prog zone"
-    parser = OptionParser(usage)
-    (options, args) = parser.parse_args()
-    if len(args) != 1:
-        parser.error("incorrect number of arguments")
-    zone = args[0]
-    if zone in zones:
-        zone = zones[zone]
-    cnml_file = "/tmp/%s.cnml" % zone
-    cnml_url = "http://guifi.net/ca/guifi/cnml/%s/detail" % zone
-
+def get_zone(zone=3671, kind="detail"):
+    cnml_file = "/tmp/{0}.{1}.cnml".format(zone, kind)
+    cnml_url = "http://guifi.net/ca/guifi/cnml/{0}/{1}".format(zone, kind)
     try:
         age = time.time() - os.path.getmtime(cnml_file)
-        if age > 3600*24:
+        if age > 24*3600:
             warning("File age %s" % age)
             warning("Too old, redownload")
             DownloadFile(cnml_url, cnml_file)
     except OSError:
         warning("%s does not exist" % cnml_file)
         DownloadFile(cnml_url, cnml_file)
+    return libcnml.CNMLParser(cnml_file)
 
-    with open(cnml_file, 'r') as f:
-        cnml = BeautifulSoup(f.read())
-        for st in cnml.find_all(is_st):
-            print("%6s %30s http://guifi.net/ca/guifi/device/%s"
-                  % (st["id"], st["title"], st["id"]))
+
+def list_zones():
+    cnml = get_zone(3671, "zones")
+    for z in cnml.getZones():
+        print(z.title, z.id)
+
+
+def display_zone(zone):
+    try:
+        zone_id = int(zone)
+    except ValueError:
+        zones = get_zone(3671, "zones")
+        result = filter(lambda z: zone in z.title.lower(), zones.getZones())
+        zone_id = next(result).id
+    cnml = get_zone(zone_id)
+    for sn in filter(lambda n: n.totalLinks > 1, cnml.getNodes()):
+        print(sn.title, "http://guifi.net/en/node/{0}".format(sn.id))
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Get information from Guifi Zones.')
+    parser.add_argument('zone', nargs="?", help="Zone to work with")
+    parser.add_argument('-l', '--list', action="store_true", help="List zones")
+    args = parser.parse_args()
+    if (args.list):
+        list_zones()
+    else:
+        display_zone(args.zone)
 
 if __name__ == "__main__":
-    zones = {
-        'world': 3671,
-        'catalunya': 2413,
-        'bages': 2426,
-        'sallent': 25672
-    }
     main()
