@@ -4,8 +4,9 @@
 #   apt-get install python-requests python-bs4
 #   pip install requests beautifulsoup4 netaddr
 from __future__ import print_function
-import sys
+
 import argparse
+import logging
 import os
 import time
 
@@ -13,14 +14,9 @@ import requests
 import libcnml
 
 
-# http://stackoverflow.com/a/14981125
-def warning(*objs):
-    print("WARNING: ", *objs, file=sys.stderr)
-
-
 # http://stackoverflow.com/a/16695277
 def DownloadFile(url, local_filename):
-    warning("Downloading %s to %s" % (url, local_filename))
+    logging.warning("Downloading %s to %s" % (url, local_filename))
     r = requests.get(url)
     with open(local_filename, 'wb') as f:
         for chunk in r.iter_content(chunk_size=1024):
@@ -35,11 +31,11 @@ def get_zone(zone=3671, kind="detail"):
     try:
         age = time.time() - os.path.getmtime(cnml_file)
         if age > 24*3600:
-            warning("File age %s" % age)
-            warning("Too old, redownload")
+            logging.warning("File age %s" % age)
+            logging.warning("Too old, redownload")
             DownloadFile(cnml_url, cnml_file)
     except OSError:
-        warning("%s does not exist" % cnml_file)
+        logging.warning("%s does not exist" % cnml_file)
         DownloadFile(cnml_url, cnml_file)
     return libcnml.CNMLParser(cnml_file)
 
