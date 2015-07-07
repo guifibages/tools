@@ -40,19 +40,24 @@ def get_zone(zone=3671, kind="detail"):
     return libcnml.CNMLParser(cnml_file)
 
 
-def list_zones():
-    cnml = get_zone(3671, "zones")
-    for z in cnml.getZones():
-        print(z.title, z.id)
-
-
-def display_zone(zone):
+def get_zone_id(zone):
     try:
         zone_id = int(zone)
     except ValueError:
         zones = get_zone(3671, "zones")
-        result = filter(lambda z: zone in z.title.lower(), zones.getZones())
-        zone_id = next(result).id
+        result = sorted(filter(lambda z: zone in z.title.lower(),
+                               zones.getZones()), key=lambda z: z.id)
+        zone_id = result[0].id
+    return zone_id
+
+
+def list_zones(zone_id):
+    cnml = get_zone(zone_id, "zones")
+    for z in cnml.getZones():
+        print(z.title, z.id)
+
+
+def display_zone(zone_id):
     cnml = get_zone(zone_id)
     for sn in filter(lambda n: n.totalLinks > 1, cnml.getNodes()):
         print(sn.title, "http://guifi.net/en/node/{0}".format(sn.id))
@@ -60,13 +65,16 @@ def display_zone(zone):
 
 def main():
     parser = argparse.ArgumentParser(description='Get information from Guifi Zones.')
-    parser.add_argument('zone', nargs="?", help="Zone to work with")
-    parser.add_argument('-l', '--list', action="store_true", help="List zones")
+    parser.add_argument('zone', nargs="?", default=3671,
+                        help="Zone to work with")
+    parser.add_argument('-z', dest='zone_list', action="store_true",
+                        help="List zones")
     args = parser.parse_args()
-    if (args.list):
-        list_zones()
+    zone_id = get_zone_id(args.zone)
+    if (args.zone_list):
+        list_zones(zone_id)
     else:
-        display_zone(args.zone)
+        display_zone(zone_id)
 
 if __name__ == "__main__":
     main()
