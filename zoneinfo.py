@@ -1,8 +1,4 @@
 #!/usr/bin/env python
-# vim: tabstop=8 expandtab shiftwidth=4 softtabstop=4
-# Requires the following modules
-#   apt-get install python-requests python-bs4
-#   pip install requests beautifulsoup4 netaddr
 from __future__ import print_function
 
 import argparse
@@ -64,7 +60,8 @@ def display_zone(zone_id):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Get information from Guifi Zones.')
+    parser = argparse.ArgumentParser(
+        description='Get information from Guifi Zones.')
     parser.add_argument('zone', nargs="?", default=3671,
                         help="Zone to work with")
     parser.add_argument('-z', dest='zone_list', action="store_true",
