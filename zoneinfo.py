@@ -21,42 +21,47 @@ def DownloadFile(url, local_filename):
     return
 
 
-def get_zone(zone=3671, kind="detail"):
-    cnml_file = "/tmp/{0}.{1}.cnml".format(zone, kind)
-    cnml_url = "http://guifi.net/ca/guifi/cnml/{0}/{1}".format(zone, kind)
-    try:
-        age = time.time() - os.path.getmtime(cnml_file)
-        if age > 24*3600:
-            logging.warning("File age %s" % age)
-            logging.warning("Too old, redownload")
+class ZoneInfo():
+    def __init__(self, zone):
+        self.zone = zone
+        self.zone_id = self.get_zone_id()
+        self.cnml = ZoneInfo.get_zone(self.zone_id)
+
+    def get_zone_id(self):
+        try:
+            zone_id = int(self.zone)
+        except ValueError:
+            zones = ZoneInfo.get_zone(3671, "zones")
+            result = sorted(filter(lambda z: self.zone in z.title.lower(),
+                                   zones.getZones()), key=lambda z: z.id)
+            zone_id = result[0].id
+        return zone_id
+
+    def zones(self):
+        for z in self.cnml.getZones():
+            print(z.title, z.id)
+
+    def multi(self):
+        for sn in filter(lambda n: n.totalLinks > 1, self.cnml.getNodes()):
+            print(sn.title, "http://guifi.net/en/node/{0}".format(sn.id))
+
+    def get_zone(zone, kind="detail"):
+        cnml_file = "/tmp/{0}.{1}.cnml".format(zone, kind)
+        cnml_url = "http://guifi.net/ca/guifi/cnml/{0}/{1}".format(zone, kind)
+        try:
+            age = time.time() - os.path.getmtime(cnml_file)
+            if age > 24*3600:
+                logging.warning("File age %s" % age)
+                logging.warning("Too old, redownload")
+                DownloadFile(cnml_url, cnml_file)
+        except OSError:
+            logging.warning("%s does not exist" % cnml_file)
             DownloadFile(cnml_url, cnml_file)
-    except OSError:
-        logging.warning("%s does not exist" % cnml_file)
-        DownloadFile(cnml_url, cnml_file)
-    return libcnml.CNMLParser(cnml_file)
+        return libcnml.CNMLParser(cnml_file)
 
-
-def get_zone_id(zone):
-    try:
-        zone_id = int(zone)
-    except ValueError:
-        zones = get_zone(3671, "zones")
-        result = sorted(filter(lambda z: zone in z.title.lower(),
-                               zones.getZones()), key=lambda z: z.id)
-        zone_id = result[0].id
-    return zone_id
-
-
-def list_zones(zone_id):
-    cnml = get_zone(zone_id, "zones")
-    for z in cnml.getZones():
-        print(z.title, z.id)
-
-
-def display_zone(zone_id):
-    cnml = get_zone(zone_id)
-    for sn in filter(lambda n: n.totalLinks > 1, cnml.getNodes()):
-        print(sn.title, "http://guifi.net/en/node/{0}".format(sn.id))
+    def list(self, kind):
+        m = getattr(self, kind)
+        m()
 
 
 def main():
@@ -64,14 +69,16 @@ def main():
         description='Get information from Guifi Zones.')
     parser.add_argument('zone', nargs="?", default=3671,
                         help="Zone to work with")
-    parser.add_argument('-z', dest='zone_list', action="store_true",
+    parser.add_argument('-z', dest='kind', action="store_const",
+                        const='zones', default="zones",
                         help="List zones")
+    parser.add_argument('-m', dest='kind', action="store_const",
+                        const='multi', default="zones",
+                        help="List ndoes with multiple links")
+
     args = parser.parse_args()
-    zone_id = get_zone_id(args.zone)
-    if (args.zone_list):
-        list_zones(zone_id)
-    else:
-        display_zone(zone_id)
+    zi = ZoneInfo(args.zone)
+    zi.list(args.kind)
 
 if __name__ == "__main__":
     main()
