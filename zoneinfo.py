@@ -61,6 +61,10 @@ class ZoneInfo():
         for z in self.cnml.getZones():
             print(z.title, z.id)
 
+    def nodes(self):
+        for n in self.cnml.getNodes():
+            print(n.title, n.id)
+
     def multi(self):
         for sn in filter(lambda n: n.totalLinks > 1, self.cnml.getNodes()):
             print(sn.title, "http://guifi.net/en/node/{0}".format(sn.id))
@@ -75,6 +79,9 @@ def main():
     opt_list.add_argument('-z', dest='kind', action="store_const",
                           const='zones', default="zones",
                           help="List zones")
+    opt_list.add_argument('-n', dest='kind', action="store_const",
+                          const='nodes', default="zones",
+                          help="List nodes")
     opt_list.add_argument('-m', dest='kind', action="store_const",
                           const='multi', default="zones",
                           help="List nodes with multiple links")
