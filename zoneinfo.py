@@ -69,6 +69,11 @@ class ZoneInfo():
         for sn in filter(lambda n: n.totalLinks > 1, self.cnml.getNodes()):
             print(sn.title, "http://guifi.net/en/node/{0}".format(sn.id))
 
+    def st(self):
+        for st in filter(lambda n: len(n.radios) > 1, self.cnml.getDevices()):
+            print("{} {} http://guifi.net/en/node/{}".format(
+                st.parentNode.title, st.title, st.id))
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -85,6 +90,9 @@ def main():
     opt_list.add_argument('-m', dest='kind', action="store_const",
                           const='multi', default="zones",
                           help="List nodes with multiple links")
+    opt_list.add_argument('-s', dest='kind', action="store_const",
+                          const='st', default="zones",
+                          help="List sts")
 
     args = parser.parse_args()
     zi = ZoneInfo(args.zone)
