@@ -96,9 +96,6 @@ def main():
     opt_list.add_argument('-n', dest='kind', action="store_const",
                           const='nodes', default="zones",
                           help="List nodes")
-    opt_list.add_argument('-m', dest='kind', action="store_const",
-                          const='multi', default="zones",
-                          help="List nodes with multiple links")
     opt_list.add_argument('-s', dest='kind', action="store_const",
                           const='st', default="zones",
                           help="List sts")
