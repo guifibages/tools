@@ -2,6 +2,7 @@
 from __future__ import print_function
 
 import argparse
+import json
 import logging
 import os
 import time
@@ -23,8 +24,13 @@ def DownloadFile(url, local_filename):
 
 class ZoneInfo():
     def __init__(self, zone, cnml_cache="/tmp",
-                 cnml_base="http://guifi.net/ca/guifi/cnml"):
+                 cnml_base="http://guifi.net/ca/guifi/cnml",
+                 node_base="http://guifi.net/en/node",
+                 output="json"):
+
+        self.output = getattr(self, output)
         self.zone = zone
+        self.node_base = cnml_base
         self.cnml_base = cnml_base
         self.cnml_cache = cnml_cache
         self.zone_id = self.get_zone_id()
@@ -54,25 +60,24 @@ class ZoneInfo():
             DownloadFile(cnml_url, cnml_file)
         return libcnml.CNMLParser(cnml_file)
 
+    def json(self, r):
+        print(json.dumps(r, indent=True))
+
     def list(self, kind):
-        getattr(self, kind)()
+        r = getattr(self, kind)()
+        self.output(r)
 
     def zones(self):
-        for z in self.cnml.getZones():
-            print(z.title, z.id)
+        return [dict(id=z.id, title=z.title) for z in self.cnml.getZones()]
 
     def nodes(self):
-        for n in self.cnml.getNodes():
-            print(n.title, n.id)
-
-    def multi(self):
-        for sn in filter(lambda n: n.totalLinks > 1, self.cnml.getNodes()):
-            print(sn.title, "http://guifi.net/en/node/{0}".format(sn.id))
+        return [dict(id=n.id, title=n.title) for n in self.cnml.getNodes()]
 
     def st(self):
-        for st in filter(lambda n: len(n.radios) > 1, self.cnml.getDevices()):
-            print("{} {} http://guifi.net/en/node/{}".format(
-                st.parentNode.title, st.title, st.id))
+        return [dict(node=dict(title=st.parentNode.title, id=st.parentNode.id),
+                     id=st.id, title=st.title)
+                for st in filter(lambda n: len(n.radios) > 1,
+                                 self.cnml.getDevices())]
 
 
 def main():
