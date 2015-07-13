@@ -26,9 +26,9 @@ class ZoneInfo():
     def __init__(self, zone, cnml_cache="/tmp",
                  cnml_base="http://guifi.net/ca/guifi/cnml",
                  node_base="http://guifi.net/en/node",
-                 output="json"):
+                 output_format="json"):
 
-        self.output = getattr(self, output)
+        self.output = getattr(self, output_format)
         self.zone = zone
         self.node_base = cnml_base
         self.cnml_base = cnml_base
@@ -62,6 +62,10 @@ class ZoneInfo():
 
     def json(self, r):
         print(json.dumps(r, indent=True))
+
+    def csv(self, r):
+        for l in r:
+            print("{},{}".format(l['id'], l['title']))
 
     def list(self, kind):
         r = getattr(self, kind)()
@@ -98,9 +102,11 @@ def main():
     opt_list.add_argument('-s', dest='kind', action="store_const",
                           const='st', default="zones",
                           help="List sts")
+    parser.add_argument('-f', dest='output_format', default="json",
+                        help="Output format")
 
     args = parser.parse_args()
-    zi = ZoneInfo(args.zone)
+    zi = ZoneInfo(args.zone, output_format=args.output_format)
     zi.list(args.kind)
 
 if __name__ == "__main__":
