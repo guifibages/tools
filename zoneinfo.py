@@ -67,6 +67,11 @@ class ZoneInfo():
         for l in r:
             print("{},{}".format(l['id'], l['title']))
 
+    def human(self, r):
+        print("{:>6} {:>18}".format("ID", "TITLE"))
+        for l in r:
+            print("{:>6} {:>18}".format(l['id'], l['title']))
+
     def list(self, kind):
         r = getattr(self, kind)()
         self.output(r)
