@@ -84,7 +84,8 @@ class ZoneInfo():
 
     def st(self):
         return [dict(node=dict(title=st.parentNode.title, id=st.parentNode.id),
-                     id=st.id, title=st.title)
+                     id=st.id, title=st.title,
+                     ips=[i.ipv4 for i in st.interfaces.values()])
                 for st in filter(lambda n: len(n.radios) > 1,
                                  self.cnml.getDevices())]
 
