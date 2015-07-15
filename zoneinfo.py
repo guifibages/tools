@@ -2,6 +2,7 @@
 from __future__ import print_function
 
 import argparse
+import ipaddress
 import json
 import logging
 import os
@@ -20,6 +21,24 @@ def DownloadFile(url, local_filename):
             if chunk:  # filter out keep-alive new chunks
                 f.write(chunk)
     return
+
+
+class SuperTrasto(dict):
+    def __init__(self, device):
+        self.device = device
+        self['node'] = self.node = dict(title=device.parentNode.title,
+                                        id=device.parentNode.id)
+        self['id'] = self.id = device.id
+        self['title'] = self.title = device.title
+        self['ips'] = self.ips = [i.ipv4 for i in device.interfaces.values()]
+        self['main_ip'] = self.main_ip = str(sorted([ipaddress.IPv4Address(ip)
+                                                     for ip in self.ips])[0])
+
+    def __str__(self):
+        return self.title
+
+    def output_csv(self):
+        return ",".join([str(self.id), str(self.title), str(self.main_ip)])
 
 
 class ZoneInfo():
@@ -65,12 +84,17 @@ class ZoneInfo():
 
     def output_csv(self, r):
         for l in r:
-            print("{},{}".format(l['id'], l['title']))
+            try:
+                print(l.output_csv())
+            except AttributeError:
+                print("{},{}".format(l['id'], l['title']))
 
     def output_human(self, r):
-        print("{:>6} {:>18}".format("ID", "TITLE"))
         for l in r:
-            print("{:>6} {:>18}".format(l['id'], l['title']))
+            try:
+                print(l.output_human())
+            except AttributeError:
+                print("{:>6} {:>18}".format(l['id'], l['title']))
 
     def list(self, kind):
         r = getattr(self, "list_" + kind)()
@@ -83,9 +107,7 @@ class ZoneInfo():
         return [dict(id=n.id, title=n.title) for n in self.cnml.getNodes()]
 
     def list_st(self):
-        return [dict(node=dict(title=st.parentNode.title, id=st.parentNode.id),
-                     id=st.id, title=st.title,
-                     ips=[i.ipv4 for i in st.interfaces.values()])
+        return [SuperTrasto(st)
                 for st in filter(lambda n: len(n.radios) > 1,
                                  self.cnml.getDevices())]
 
