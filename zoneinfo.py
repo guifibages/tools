@@ -28,7 +28,7 @@ class ZoneInfo():
                  node_base="http://guifi.net/en/node",
                  output_format="json"):
 
-        self.output = getattr(self, output_format)
+        self.output = getattr(self, "output_" + output_format)
         self.zone = zone
         self.node_base = cnml_base
         self.cnml_base = cnml_base
@@ -60,29 +60,29 @@ class ZoneInfo():
             DownloadFile(cnml_url, cnml_file)
         return libcnml.CNMLParser(cnml_file)
 
-    def json(self, r):
+    def output_json(self, r):
         print(json.dumps(r, indent=True))
 
-    def csv(self, r):
+    def output_csv(self, r):
         for l in r:
             print("{},{}".format(l['id'], l['title']))
 
-    def human(self, r):
+    def output_human(self, r):
         print("{:>6} {:>18}".format("ID", "TITLE"))
         for l in r:
             print("{:>6} {:>18}".format(l['id'], l['title']))
 
     def list(self, kind):
-        r = getattr(self, kind)()
+        r = getattr(self, "list_" + kind)()
         self.output(r)
 
-    def zones(self):
+    def list_zones(self):
         return [dict(id=z.id, title=z.title) for z in self.cnml.getZones()]
 
-    def nodes(self):
+    def list_nodes(self):
         return [dict(id=n.id, title=n.title) for n in self.cnml.getNodes()]
 
-    def st(self):
+    def list_st(self):
         return [dict(node=dict(title=st.parentNode.title, id=st.parentNode.id),
                      id=st.id, title=st.title,
                      ips=[i.ipv4 for i in st.interfaces.values()])
