@@ -127,7 +127,7 @@ def main():
     opt_list.add_argument('-s', dest='kind', action="store_const",
                           const='st', default="zones",
                           help="List sts")
-    parser.add_argument('-f', dest='output_format', default="json",
+    parser.add_argument('-f', dest='output_format', default="csv",
                         help="Output format")
 
     args = parser.parse_args()
