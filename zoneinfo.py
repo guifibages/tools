@@ -31,14 +31,18 @@ class SuperTrasto(dict):
         self['id'] = self.id = device.id
         self['title'] = self.title = device.title
         self['ips'] = self.ips = [i.ipv4 for i in device.interfaces.values()]
-        self['main_ip'] = self.main_ip = str(sorted([ipaddress.IPv4Address(ip)
-                                                     for ip in self.ips])[0])
+        self['mainipv4'] = self.mainipv4 = str(sorted(
+            [ipaddress.IPv4Address(ip) for ip in self.ips])[0])
 
     def __str__(self):
         return self.title
 
+    def output_human(self):
+        return("{:>6} {:<18} {:<18}".format(self.id, self.title,
+                                            self.mainipv4))
+
     def output_csv(self):
-        return ",".join([str(self.id), str(self.title), str(self.main_ip)])
+        return ",".join([str(self.id), str(self.title), str(self.mainipv4)])
 
 
 class ZoneInfo():
@@ -94,7 +98,7 @@ class ZoneInfo():
             try:
                 print(l.output_human())
             except AttributeError:
-                print("{:>6} {:>18}".format(l['id'], l['title']))
+                print("{:>6} {:<18}".format(l['id'], l['title']))
 
     def list(self, kind):
         r = getattr(self, "list_" + kind)()
@@ -127,7 +131,7 @@ def main():
     opt_list.add_argument('-s', dest='kind', action="store_const",
                           const='st', default="zones",
                           help="List sts")
-    parser.add_argument('-f', dest='output_format', default="csv",
+    parser.add_argument('-f', dest='output_format', default="human",
                         help="Output format")
 
     args = parser.parse_args()
