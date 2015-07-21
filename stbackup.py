@@ -4,16 +4,25 @@ import argparse
 import pathlib
 import datetime
 
+import paramiko
 import zoneinfo
 
 
-class STBackup(zoneinfo.SuperTrasto):
+class STBackup():
     def __init__(self, st, backup_root="/tmp"):
         self.st = st
         backup_path = pathlib.Path(backup_root,
                                    datetime.date.today().isoformat())
         self.file = pathlib.Path(backup_path,
                                  st.node['title'], st.title + ".rsrc")
+
+    def export(self):
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(self.st.mainipv4, username='guest', password="",
+                    allow_agent=False, look_for_keys=False, timeout=5)
+        stdin, stdout, stderr = ssh.exec_command("/export")
+        self.rsrc = stdout.read()
 
     def write(self):
         pass
@@ -33,7 +42,9 @@ def main():
 
     for st in zi.list_st():
         backup = STBackup(st)
-        print(backup.file)
+        backup.export()
+        print(backup.st)
+        print(backup.rsrc)
 
 if __name__ == "__main__":
     main()
