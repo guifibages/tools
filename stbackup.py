@@ -13,8 +13,8 @@ class STBackup():
         self.st = st
         backup_path = pathlib.Path(backup_root,
                                    datetime.date.today().isoformat())
-        self.file = pathlib.Path(backup_path,
-                                 st.node['title'], st.title + ".rsrc")
+        self.dir = pathlib.Path(backup_path, st.node['title'])
+        self.file = pathlib.Path(self.dir, st.title + ".rsrc")
 
     def export(self):
         ssh = paramiko.SSHClient()
@@ -23,9 +23,14 @@ class STBackup():
                     allow_agent=False, look_for_keys=False, timeout=5)
         stdin, stdout, stderr = ssh.exec_command("/export")
         self.rsrc = stdout.read()
+        self.write()
 
     def write(self):
-        pass
+        if not self.dir.exists():
+            self.dir.mkdir(parents=True)
+
+        with self.file.open("wb") as f:
+            f.write(self.rsrc)
 
     def check(self):
         pass
@@ -44,7 +49,6 @@ def main():
         backup = STBackup(st)
         backup.export()
         print(backup.st)
-        print(backup.rsrc)
 
 if __name__ == "__main__":
     main()
