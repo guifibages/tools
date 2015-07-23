@@ -9,12 +9,18 @@ import zoneinfo
 
 
 class STBackup():
-    def __init__(self, st, backup_root="/tmp"):
+    def __init__(self, st, backup_root="/tmp/stbackup"):
         self.st = st
         backup_path = pathlib.Path(backup_root,
-                                   datetime.date.today().isoformat())
+                                   )
         self.dir = pathlib.Path(backup_path, st.node['title'])
-        self.file = pathlib.Path(self.dir, st.title + ".rsrc")
+        if not self.dir.exists():
+            self.dir.mkdir(parents=True)
+
+        filename = ".".join([st.title, datetime.date.today().isoformat(),
+                             "rsrc"])
+        self.file = pathlib.Path(self.dir, filename)
+        self.current = pathlib.Path(self.dir, ".".join([st.title, "rsrc"]))
 
     def export(self):
         ssh = paramiko.SSHClient()
@@ -22,15 +28,15 @@ class STBackup():
         ssh.connect(self.st.mainipv4, username='guest', password="",
                     allow_agent=False, look_for_keys=False, timeout=5)
         stdin, stdout, stderr = ssh.exec_command("/export")
-        self.rsrc = stdout.read()
+        # The first line includes the time
+        self.rsrc = "".join(stdout.readlines()[1:])
         self.write()
 
     def write(self):
-        if not self.dir.exists():
-            self.dir.mkdir(parents=True)
-
-        with self.file.open("wb") as f:
+        with self.file.open("w") as f:
             f.write(self.rsrc)
+        self.current.unlink()
+        self.current.symlink_to(self.file.relative_to(self.dir))
 
     def check(self):
         pass
