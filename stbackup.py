@@ -19,6 +19,12 @@ class STBackup():
                              "rsrc"])
         self.file = pathlib.Path(self.dir, filename)
         self.current = pathlib.Path(self.dir, ".".join([st.title, "rsrc"]))
+        self.last = ""
+        self.rsrc = ""
+        if self.current.exists():
+            with self.current.open(newline='') as r:
+                self.last = str(r.read())
+        self.error = None
 
     def export(self):
         ssh = paramiko.SSHClient()
@@ -33,11 +39,12 @@ class STBackup():
     def write(self):
         with self.file.open("w") as f:
             f.write(self.rsrc)
-        self.current.unlink()
+        if self.current.exists():
+            self.current.unlink()
         self.current.symlink_to(self.file.relative_to(self.dir))
 
-    def check(self):
-        pass
+    def need_backup(self):
+        return self.last != self.rsrc
 
 
 def main():
