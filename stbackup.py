@@ -11,9 +11,7 @@ import zoneinfo
 class STBackup():
     def __init__(self, st, backup_root="/tmp/stbackup"):
         self.st = st
-        backup_path = pathlib.Path(backup_root,
-                                   )
-        self.dir = pathlib.Path(backup_path, st.node['title'])
+        self.dir = pathlib.Path(backup_root, st.node['title'])
         if not self.dir.exists():
             self.dir.mkdir(parents=True)
 
