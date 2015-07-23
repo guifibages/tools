@@ -59,7 +59,7 @@ def main():
     for st in zi.list_st():
         backup = STBackup(st)
         backup.export()
-        print(backup.st)
+        print(backup.st, backup.need_backup(), backup.error)
 
 if __name__ == "__main__":
     main()
