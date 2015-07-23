@@ -3,6 +3,7 @@
 import argparse
 import pathlib
 import datetime
+import logging
 
 import paramiko
 import zoneinfo
@@ -28,13 +29,20 @@ class STBackup():
 
     def export(self):
         ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.connect(self.st.mainipv4, username='guest', password="",
-                    allow_agent=False, look_for_keys=False, timeout=5)
-        stdin, stdout, stderr = ssh.exec_command("/export")
-        # The first line includes the time
-        self.rsrc = "".join(stdout.readlines()[1:])
-        self.write()
+        logging.getLogger("paramiko.transport").disabled = True
+        try:
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(self.st.mainipv4, username='guest', password="",
+                        allow_agent=False, look_for_keys=False, timeout=5)
+            stdin, stdout, stderr = ssh.exec_command("/export")
+            # The first line includes the time
+            self.rsrc = "".join(stdout.readlines()[1:])
+            if self.need_backup():
+                self.write()
+        except paramiko.ssh_exception.AuthenticationException:
+            self.error = "Authentication Error"
+        except paramiko.ssh_exception.SSHException as e:
+            self.error = e
 
     def write(self):
         with self.file.open("w") as f:
