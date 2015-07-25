@@ -54,6 +54,10 @@ class STBackup():
     def need_backup(self):
         return self.last != self.rsrc
 
+    def status(self):
+        return dict(st=self.st.title, changes=self.need_backup(),
+                    error=self.error)
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -67,7 +71,7 @@ def main():
     for st in zi.list_st():
         backup = STBackup(st)
         backup.export()
-        print(backup.st, backup.need_backup(), backup.error)
+        print(backup.status())
 
 if __name__ == "__main__":
     main()
