@@ -3,6 +3,7 @@
 import argparse
 import pathlib
 import datetime
+import json
 import logging
 
 import paramiko
@@ -56,8 +57,10 @@ class STBackup():
 
     def status(self):
         return dict(st=self.st.title, changes=self.need_backup(),
-                    error=self.error)
+                    error=str(self.error))
 
+    def __str__(self):
+        return json.dumps(self.status())
 
 def main():
     parser = argparse.ArgumentParser(
@@ -71,7 +74,7 @@ def main():
     for st in zi.list_st():
         backup = STBackup(st)
         backup.export()
-        print(backup.status())
+        print(backup)
 
 if __name__ == "__main__":
     main()
