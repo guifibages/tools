@@ -62,6 +62,7 @@ class STBackup():
     def __str__(self):
         return json.dumps(self.status())
 
+
 def main():
     parser = argparse.ArgumentParser(
         description='Backup Guifi SuperTrastos in a zone.')
