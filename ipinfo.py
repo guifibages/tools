@@ -20,7 +20,7 @@ if __name__ == "__main__":
         host = requests.get('http://guifi.net/ca/guifi/menu/ip/ipsearch/%s'
                             % address)
         # network = requests.get('http://guifi.net/ca/guifi/menu/ip/ipsearch/%s' % ip.network)
-        s = BeautifulSoup(host.text)
+        s = BeautifulSoup(host.text, 'lxml')
         h = s.find("th", text="nipv4").find_parent("table").find_all("td")
         if len(h) == 0 and address != ip.network+1:
             next(ip.network+1)
