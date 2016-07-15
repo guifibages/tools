@@ -1,23 +1,25 @@
-#!/usr/bin/env python
-from __future__ import print_function
+#!/usr/bin/env python3
 
 import argparse
-import ipaddress
+from ipaddress import ip_address, ip_network
 import json
 import logging
 import os
+import pathlib
 import time
 
 import requests
 import libcnml
 
+cnml_cache = pathlib.Path.home() / '.local/guifibages/cnml_cache'
+
 
 # http://stackoverflow.com/a/16695277
-def DownloadFile(url, local_filename):
-    logging.warning("Downloading %s to %s" % (url, local_filename))
+def DownloadFile(url, local_file, chunk_size=8192):
+    logging.warning("Downloading %s to %s" % (url, local_file))
     r = requests.get(url)
-    with open(local_filename, 'wb') as f:
-        for chunk in r.iter_content(chunk_size=1024):
+    with local_file.open('wb') as f:
+        for chunk in r.iter_content(chunk_size=chunk_size):
             if chunk:  # filter out keep-alive new chunks
                 f.write(chunk)
     return
@@ -25,15 +27,24 @@ def DownloadFile(url, local_filename):
 
 class SuperTrasto(dict):
     def __init__(self, device):
+        guifi_public_network = ip_network('10.0.0.0/8')
         self.device = device
         self['node'] = self.node = dict(title=device.parentNode.title,
                                         id=device.parentNode.id)
         self['id'] = self.id = device.id
         self['title'] = self.title = device.title
-        self['ips'] = self.ips = [i.ipv4 for i in device.interfaces.values()]
-        self['mainipv4'] = self.mainipv4 = str(sorted(
-            [ipaddress.IPv4Address(ip) for ip in self.ips])[0])
-
+        self['ips'] = self.ips = [
+            ip_address(i.ipv4) for i in device.interfaces.values()
+            if i.ipv4 != ''
+        ]
+        try:
+            mainipv4 = str(sorted(
+                [ip for ip in self.ips if ip in guifi_public_network],
+                reverse=True
+            ).pop())
+        except IndexError:
+            mainipv4 = None
+        self['mainipv4'] = self.mainipv4 = mainipv4
     def __str__(self):
         return self.title
 
@@ -46,7 +57,7 @@ class SuperTrasto(dict):
 
 
 class ZoneInfo():
-    def __init__(self, zone, cnml_cache="/tmp",
+    def __init__(self, zone, cnml_cache=cnml_cache,
                  cnml_base="http://guifi.net/ca/guifi/cnml",
                  node_base="http://guifi.net/en/node",
                  output_format="json"):
@@ -55,6 +66,8 @@ class ZoneInfo():
         self.zone = zone
         self.node_base = cnml_base
         self.cnml_base = cnml_base
+        if not cnml_cache.exists():
+            cnml_cache.mkdir(parents=True)
         self.cnml_cache = cnml_cache
         self.zone_id = self.get_zone_id()
         self.cnml = self.get_zone(self.zone_id)
@@ -70,10 +83,11 @@ class ZoneInfo():
         return zone_id
 
     def get_zone(self, zone, kind="detail"):
-        cnml_file = "{}/{}.{}.cnml".format(self.cnml_cache, zone, kind)
+        filename = '{}.{}.cnml'.format(zone, kind)
+        cnml_file = self.cnml_cache / filename
         cnml_url = "{}/{}/{}".format(self.cnml_base, zone, kind)
         try:
-            age = time.time() - os.path.getmtime(cnml_file)
+            age = time.time() - cnml_file.stat().st_mtime
             if age > 24*3600:
                 logging.warning("File age %s" % age)
                 logging.warning("Too old, redownload")
@@ -81,7 +95,7 @@ class ZoneInfo():
         except OSError:
             logging.warning("%s does not exist" % cnml_file)
             DownloadFile(cnml_url, cnml_file)
-        return libcnml.CNMLParser(cnml_file)
+        return libcnml.CNMLParser(str(cnml_file))
 
     def output_json(self, r):
         print(json.dumps(r, indent=True))
@@ -135,7 +149,8 @@ def main():
                         help="Output format")
 
     args = parser.parse_args()
-    zi = ZoneInfo(args.zone, output_format=args.output_format)
+
+    zi = ZoneInfo(args.zone, cnml_cache=cnml_cache, output_format=args.output_format)
     zi.list(args.kind)
 
 if __name__ == "__main__":

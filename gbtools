@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+#-*- mode:sh -*-
+export LANG=C.UTF-8
+CONTAINER_NAME=guifibages/tools
+# If we are called outside Docker build and run the container.
+GBDIR=.local/guifibages
+if test ! -f /.dockerenv; then
+    # Build
+    docker images | grep -q $CONTAINER_NAME || docker build -t $CONTAINER_NAME .
+    test -d $HOME/$GBDIR  || mkdir -p $HOME/$GBDIR
+    docker run \
+           -v $HOME/.gitconfig:/root/.gitconfig:ro \
+           -v $HOME/$GBDIR:/root/.local/guifibages \
+           -v $(pwd):/usr/src/app:ro \
+           -v $SSH_AUTH_SOCK:/root/ssh-socket:ro \
+           -e SSH_AUTH_SOCK=/root/ssh-socket \
+           -e DEBUG=$DEBUG \
+           --rm -ti $CONTAINER_NAME $*
+    exit $?
+fi
+
+# Else, act as entrypoint
+
+export GBDIR=$HOME/$GBDIR
+test -n "$DEBUG" && hostname && env && set -x
+function run
+{
+    cmd=$*
+    test -n "$DEBUG" && echo "Running $cmd"
+    $cmd
+}
+
+function usage
+{
+    cat <<EOF
+Usage: gbtools <command> [parameters]
+Commands:
+
+Help
+    help     This fine usage message.
+    halp     Alias for help.
+
+EOF
+}
+
+function error
+{
+    (>&2 echo -e "Errors have been made, others will be blamed.\n$*")
+    exit 1
+}
+
+
+command=$1
+shift
+pyfile=/usr/src/app/$command.py
+
+if test -x $pyfile; then
+    $pyfile $*
+else
+    $command $*
+fi
