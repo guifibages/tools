@@ -36,17 +36,13 @@ class SuperTrasto(dict):
         self['id'] = self.id = device.id
         self['title'] = self.title = device.title
         self['ips'] = self.ips = [
-            ip_address(i.ipv4) for i in device.interfaces.values()
+            i.ipv4 for i in device.interfaces.values()
             if i.ipv4 != ''
         ]
-        try:
-            mainipv4 = str(sorted(
-                [ip for ip in self.ips if ip in guifi_public_network],
-                reverse=True
-            ).pop())
-        except IndexError:
-            mainipv4 = None
-        self['mainipv4'] = self.mainipv4 = mainipv4
+        self['mainipv4'] = self.mainipv4 = (
+            None if device.mainipv4 == '' else device.mainipv4
+        )
+
     def __str__(self):
         return self.title
 
