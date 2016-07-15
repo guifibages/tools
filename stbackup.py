@@ -54,7 +54,8 @@ class STBackup():
                 self.write()
         except paramiko.ssh_exception.AuthenticationException:
             self.error = "Authentication Error"
-        except paramiko.ssh_exception.SSHException as e:
+        except (paramiko.ssh_exception.NoValidConnectionsError,
+                paramiko.ssh_exception.SSHException) as e:
             self.error = e
         except OSError as error:
             if error.errno == 113:
