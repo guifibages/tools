@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import requests
 import sys
@@ -11,10 +11,12 @@ class Antenna:
         self.host = host
         self.http_client = requests.Session()
         self.http_client.get("https://%s/login.cgi" % host, verify=False)
-        self.http_client.post("https://%s/login.cgi" % host, verify=False,
-                              data={'username': username, 'password': password,
-                                    'uri': 'sta.cgi'},
-                              files={'b': 'b'})  # use files to force multipart/form-data
+        self.http_client.post(
+            "https://%s/login.cgi" % host, verify=False,
+            data={'username': username, 'password': password,
+                  'uri': 'sta.cgi'},
+            files={'b': 'b'}  # use files to force multipart/form-data
+        )
         self.status()
 
     def status(self):
@@ -26,9 +28,8 @@ class Antenna:
         self.fwversion = self.status['host']['fwversion']
 
     def acl(self):
-        r = self.http_client.get("https://%s/macacl.cgi"
-                                 % self.host, verify=False)
-        print r.content
+        self.acl = self.http_client.get("https://%s/macacl.cgi"
+                                        % self.host, verify=False)
 
     def __str__(self):
         r = ("### %s (%s AirOS %s)\n"
@@ -60,4 +61,4 @@ if __name__ == "__main__":
     pool.close()
     pool.join()
     for r in results:
-        print r
+        print(r)
