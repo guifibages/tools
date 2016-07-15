@@ -11,6 +11,8 @@ import time
 import requests
 import libcnml
 
+if os.getenv('DEBUG'):
+    libcnml.logger.setLevel(logging.DEBUG)
 cnml_cache = pathlib.Path.home() / '.local/guifibages/cnml_cache'
 
 
@@ -119,15 +121,15 @@ class ZoneInfo():
         self.output(r)
 
     def list_zones(self):
-        return [dict(id=z.id, title=z.title) for z in self.cnml.getZones()]
+        return [dict(id=z.id, title=z.title) for z in self.cnml.get_zones()]
 
     def list_nodes(self):
-        return [dict(id=n.id, title=n.title) for n in self.cnml.getNodes()]
+        return [dict(id=n.id, title=n.title) for n in self.cnml.get_nodes()]
 
     def list_st(self):
         return [SuperTrasto(st)
                 for st in filter(lambda n: len(n.radios) > 1,
-                                 self.cnml.getDevices())]
+                                 self.cnml.get_devices())]
 
 
 def main():
@@ -150,7 +152,8 @@ def main():
 
     args = parser.parse_args()
 
-    zi = ZoneInfo(args.zone, cnml_cache=cnml_cache, output_format=args.output_format)
+    zi = ZoneInfo(args.zone, cnml_cache=cnml_cache,
+                  output_format=args.output_format)
     zi.list(args.kind)
 
 if __name__ == "__main__":
